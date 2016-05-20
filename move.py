@@ -1,74 +1,10 @@
 import time
 from copy import deepcopy
-PAWN = 1
-KNIGHT = 2
-BISHOP = 3
-ROOK = 4
-QUEEN = 5
-KING = 6
-X_COORD = 0
-Y_COORD = 1
-WHITE = 0
-BLACK = 1
-KNIGHT_MOVES = (1,2), (1,-2), (-1,2), (-1,-2), (2,1), (2,-1), (-2,1), (-2,-1)
-DIAG_MOVES = (1,1), (1,-1), (-1,1), (-1,-1)
-VERT_MOVES = (1,0), (-1,0), (0,1), (0,-1)
-KING_MOVES = (1,0), (-1,0), (1,-1), (0,-1), (-1,-1), (0,1), (-1,1), (1,1)
+from constants import *
+from position import Position
+from stuff import change_pos
 
 
-
-
-class Position:
-    def __init__(self, data):
-        line_white = [[], [], [], [], [], []]
-        line_black = [[], [], [], [], [], []]
-        for i in range(8):
-            for j in range(8):
-                if data[i][j] > 6:
-                    line_black[data[i][j] - 7] += [[i, j]]
-                elif data[i][j] != 0:
-                    line_white[data[i][j] - 1] += [[i, j]]            
-        self.data = data
-        self.white = line_white
-        self.black = line_black
-        
-    def get_avail_certain_figure(self, x, y, figures, colour):
-        for i in range(len(figures)):
-            if self.data[x][y] == (colour * 6) + figures[i]:
-                return True
-        return False    
-
-    def get_avail_colour_figure(self, x, y, colour):
-        return self.data[x][y] > colour * 6
-
-    def get_avail_figure(self, x, y):
-        return self.data[x][y] > 0
-
-    
-    def return_coords(self, figure, figure_list, colour):
-        if colour == WHITE:
-            return self.white[figure - 1][figure_list][X_COORD], self.white[figure - 1][figure_list][Y_COORD]
-        else:
-            return self.black[figure - 1][figure_list][X_COORD], self.black[figure - 1][figure_list][Y_COORD]
-        
-    def change_coords(self, figure, figure_list, colour, x1, y1):
-        if colour == WHITE:
-            self.white[figure - 1][figure_list][X_COORD], self.white[figure - 1][figure_list][Y_COORD] = x1, y1
-        else:
-            self.black[figure - 1][figure_list][X_COORD], self.black[figure - 1][figure_list][Y_COORD] = x1, y1 
-            
-    def change_position(self, x, y, figure):
-        self.data[x][y] = figure
-    
-    def get_list(self, figure, colour):
-        if not colour:
-            return self.white[figure - 1]
-        else:
-            return self.black[figure - 1]
-        
-        
-
-        
 def all_moves_on_line(position, vector, x, y, check, line_legal, colour, max_step=7, pawntrue=False):
     line = []
     for i in range(max_step):
@@ -172,25 +108,25 @@ def get_move(figure, position, x, y, line_legal, colour, check=False):
             line += all_moves_on_line(position, vector, x, y, check, line_legal, colour, 1, True)
     return line 
 
-def bunch_moves(position, x1, y1, xking, yking, typef):
+def bunch_moves(position, x1, y1, xking, yking, typef, check, line_legal, colour):
     line = []
     if typef == KNIGHT:
         return []
     elif x1 == xking and typef in [ROOK, QUEEN]:
         for vector in [(0, 1), (0, -1)]:
-            line += all_moves_on_line(position, vector, x1, y1, max_step=7, pawntrue=False)
+            line += all_moves_on_line(position, vector, x1, y1, check, line_legal, colour)
         return line
     elif y1 == yking:
         if typef in [ROOK, QUEEN]:
             for vector in [(1, 0), (-1, 0)]:
-                line += all_moves_on_line(position, vector, x1, y1, max_step=7, pawntrue=False)
+                line += all_moves_on_line(position, vector, x1, y1, check, line_legal, colour)
             return line
         elif typef == PAWN and xking < x1:
-            return all_moves_on_line(position, (1, 0), x1, y1, max_step=1, pawntrue=False)
+            return all_moves_on_line(position, (1, 0), x1, y1, check, line_legal, colour, 1)
     elif (x1 - xking - y1 + yking) == 0:
         if typef in [BISHOP, QUEEN]:
             for vector in [(1, 1), (-1, -1)]:
-                line += all_moves_on_line(position, vector, x1, y1, max_step=7, pawntrue=False)
+                line += all_moves_on_line(position, vector, x1, y1, check, line_legal, colour)
             return line
         elif typef == PAWN:
             if position.get_avail_colour_figure(x1 + 1, y1 + 1, BLACK):
@@ -198,20 +134,13 @@ def bunch_moves(position, x1, y1, xking, yking, typef):
     else:
         if typef in [BISHOP, QUEEN]:
             for vector in [(-1, 1), (-1, 1)]:
-                line += all_moves_on_line(position, vector, x1, y1, max_step=7, pawntrue=False)
+                line += all_moves_on_line(position, vector, x1, y1, check, line_legal, colour)
             return line 
         elif typef == PAWN:
             if position.get_avail_colour_figure(x1 + 1, y1 - 1, BLACK):
                 return [x1, y1, x1 + 1, y1 - 1]        
     return []
 
-
-def print_data(list):
-    print()
-    print()
-    for i in range(8):
-        print(" ".join(map(str, list[7 - i])))
-              
 
 def king_moves(position, x, y, colour):
     line = []
@@ -245,7 +174,7 @@ def legal_moves(position, colour):
                         if [x, y] not in line:
                             list_moves += get_move(figure, position, x, y, line_legal, colour)
                         else:
-                            list_moves += bunch_moves(position, x, y, xking, yking, figure)         
+                            list_moves += bunch_moves(position, x, y, xking, yking, figure, checks, line_legal, colour)         
                     else:
                         if [x, y] not in line:
                             list_moves += get_move(figure, position, x, y, line_legal, colour, True)
@@ -256,16 +185,12 @@ def legal_moves(position, colour):
                         if [x, y] not in line:
                             list_moves += get_move(figure, position, x, y, line_legal, colour)
                         else:
-                            list_moves += bunch_moves(position, x, y, xking, yking, figure)         
+                            list_moves += bunch_moves(position, x, y, xking, yking, figure, checks, line_legal, colour)         
                     else:
                         if [x, y] not in line:
                             list_moves += get_move(figure, position, x, y, line_legal, colour, True)                
     list_moves += king_moves(position, xking, yking, colour) 
-    return list_moves   
-
-def change_pos(position, x, y, x1, y1, first_figure, second_figure):
-    position.change_position(x, y, first_figure)
-    position.change_position(x1, y1, second_figure)    
+    return list_moves      
     
 
    
@@ -303,43 +228,7 @@ def make_move(position, colour, length):
         change_pos(position, x, y, x1, y1, number_cell, number_end)
         position.change_coords(number_cell, i, WHITE, x, y)
     return [-1, -1, -1, -1]    
-
-    
-def course_record(x, y, x1, y1, figure, eat):
-    answer = ""
-    line_vert = ["a", "b", "c", "d", "e", "f", "g", "h"]
-    line_figures = ["", "N", "B", "R", "Q", "K"]
-    answer += line_figures[figure - 1]
-    if eat:
-        answer += ":"
-    answer += line_vert[y1]
-    answer += str(x1 + 1)
-    if figure == PAWN and eat:
-        answer = line_vert[y] + answer
-    return answer
-    
-
-def read_position(data):
-    data = data[::-1]
-    return Position(data)    
-    
-
-def main():
-    data = []
-    for i in range(8):
-        data += [list(map(int, input().split()))]
-    position = read_position(data)
-    x, y, x1, y1 = make_move(position, 0, 1)
-    eat = False
-    if x == -1:
-        print("NO")
-    else:    
-        if position.get_avail_colour_figure(x1, y1, BLACK):
-            eat = True   
-        print(course_record(x, y, x1, y1, position.data[x][y], eat))
-
-    
-main()        
+       
             
             
     
