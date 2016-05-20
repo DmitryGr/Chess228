@@ -81,7 +81,11 @@ def inspect_check(position, colour):
         a, b, line_legal_moves = check_bunch_of_the_line(position, vector, x, y, False, [PAWN], colour, 1)       
         number_of_checks += a
         if line_legal_moves:
-            line_legal = line_legal_moves        
+            line_legal = line_legal_moves 
+    for vector in KING_MOVES:
+        a, b, line_legal_moves = check_bunch_of_the_line(position, vector, x, y, False, [KING], colour, 1)
+        if a > 0:
+            return 3, [], []
     if number_of_checks == 2:
         line_legal = []
     return number_of_checks, list_bunches, line_legal 
@@ -89,9 +93,9 @@ def inspect_check(position, colour):
 
 def get_move(figure, position, x, y, line_legal, colour, check=False):
     if colour:
-        pawn_vert = 1
+        pawn_vert = -1
     else:
-        pawn_vert = -1    
+        pawn_vert = 1    
     line = []
     if figure == KNIGHT:
         for vector in KNIGHT_MOVES:
@@ -213,10 +217,10 @@ def make_move(position, colour, length):
                 if number_end > 0:
                     for figures in position.black:
                         if [x1, y1] in figures:
-                            delete 
+                            delete = True
                             delete_figures = figures
-                            figures.remove([x1, y1])           
-                break  
+                            figures.remove([x1, y1])  
+                break   
         if make_move(position, 1 - colour, length - 1):
             if delete:
                 delete_figures += [x1, y1]

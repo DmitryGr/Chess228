@@ -27,4 +27,11 @@ def print_data(list):
     print()
     for i in range(8):
         print(" ".join(map(str, list[7 - i])))
+        
+      
+            
+            
+        
+        
+        
               
