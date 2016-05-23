@@ -11,15 +11,23 @@ def all_moves_on_line(position, vector, x, y, check, line_legal, colour, max_ste
         x1, y1 = x + vector[0] * (i + 1), y + vector[1] * (i + 1)
         if min(x1, y1) >= 0 and max(x1, y1) <= 7:
             if not check:
-                    if not pawntrue and not position.get_avail_certain_figure(x1, y1, [PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING], colour):
-                        line += [[x, y, x1, y1]]    
-                    if position.get_avail_figure(x1, y1):
-                        return line 
+                if pawntrue:
+                    if vector[1] != 0:
+                        if position.get_avail_certain_figure(x1, y1, [PAWN, KNIGHT, BISHOP, ROOK, QUEEN], 1 - colour):
+                            line += [[x, y, x1, y1]]
+                    else:
+                        if not position.get_avail_figure(x1, y1):
+                            line += [[x, y, x1, y1]]
+                    return line        
+                elif not pawntrue and not position.get_avail_certain_figure(x1, y1, [PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING], colour):
+                    line += [[x, y, x1, y1]]  
+                if position.get_avail_figure(x1, y1):
+                    return line
             if check:
                 if [x1, y1] in line_legal:
-                    return [x, y, x1, y1]
+                    line += [[x, y, x1, y1]]
         else:
-            break
+            break  
     return line 
 
 
@@ -34,6 +42,7 @@ def check_bunch_of_the_line(position, vector, x, y, bunch_tf, figures, colour, m
         if min(x1, y1) >= 0 and max(x1, y1) <= 7:
             if position.get_avail_certain_figure(x1, y1, figures, 1 - colour):
                 if not bunch_tf or counter == 0:
+                    line_legal_moves += [[x1, y1]]
                     return 1, [], line_legal_moves
                 else:
                     return 0, line_bunch, [] 
@@ -91,7 +100,7 @@ def inspect_check(position, colour):
     return number_of_checks, list_bunches, line_legal 
 
 
-def get_move(figure, position, x, y, line_legal, colour, check=False):
+def get_move(position, figure, x, y, line_legal, colour, check=False):
     if colour:
         pawn_vert = -1
     else:
@@ -107,8 +116,7 @@ def get_move(figure, position, x, y, line_legal, colour, check=False):
         for vector in VERT_MOVES:
             line += all_moves_on_line(position, vector, x, y, check, line_legal, colour)
     if figure == PAWN:
-        line += all_moves_on_line(position, (pawn_vert, 0), x, y, check, line_legal, colour, 1)
-        for vector in [(pawn_vert,1), (pawn_vert,-1)]:
+        for vector in [(pawn_vert, 1), (pawn_vert, -1), (pawn_vert, 0)]:
             line += all_moves_on_line(position, vector, x, y, check, line_legal, colour, 1, True)
     return line 
 
