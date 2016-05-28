@@ -13,6 +13,9 @@ def fen_format(string):
         elif string[i] == "/":
             counter += 1
         elif string[i] == "w":
-            colour = WHITE     
+            colour = WHITE
+            break
+        elif string[i] == "b":
+            break    
     return data, colour 
     

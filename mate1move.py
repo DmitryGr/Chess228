@@ -9,7 +9,7 @@ def main():
         input_str = input()
         if "/" not in input_str:
             continue
-        data, colour = fen_format(input_str[6:])
+        data, colour = fen_format(input_str)
         position = read_position(data)
         x, y, x1, y1 = make_move(position, colour, 1)
         eat = False

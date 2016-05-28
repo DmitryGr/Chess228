@@ -21,7 +21,10 @@ class Position:
         return False    
 
     def get_avail_colour_figure(self, x, y, colour):
-        return self.data[x][y] > colour * 6
+        if colour == BLACK:
+            return self.data[x][y] > colour * 6
+        else:
+            return (self.data[x][y] > 0 and self.data[x][y] < 7)
 
     def get_avail_figure(self, x, y):
         return self.data[x][y] > 0
