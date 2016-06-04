@@ -118,7 +118,7 @@ def inspect_check(position, colour):
     return number_of_checks, list_bunches, line_legal 
 
 
-def get_move(position, figure, x, y, line_legal, colour, check=False):
+def get_move(position, figure, x, y, line_legal, colour, check=False, passant=False):
     if colour:
         pawn_vert = -1
     else:
@@ -135,18 +135,19 @@ def get_move(position, figure, x, y, line_legal, colour, check=False):
             line += all_moves_on_line(position, vector, x, y, check, line_legal, colour)
     if figure == PAWN:
         for vector in [(pawn_vert, 1), (pawn_vert, -1), (pawn_vert, 0)]:
-            line += all_moves_on_line(position, vector, x, y, check, line_legal, colour, 1, True)
+            line += all_moves_on_line(position, vector, x, y, check, line_legal, colour, 1, True)         
+        if passant == [x + pawn_vert, y + 1] or passant == [x + pawn_vert, y - 1]:
+            line += [[x, y, passant[0], passant[1]]]
     return line 
 
-def bunch_moves(position, x1, y1, xking, yking, typef, check, line_legal, colour):
+def bunch_moves(position, x1, y1, xking, yking, typef, check, line_legal, colour, passant):
     if not check:
         if colour == WHITE:
             change_x_coord = 1
             change_y_coord = 1
         else:
             change_x_coord = -1
-            change_y_coord = -1
-#change_y_coord для двух случаев ходов по диагонали            
+            change_y_coord = -1          
         line = []
         if typef == KNIGHT:
             return []
@@ -160,14 +161,14 @@ def bunch_moves(position, x1, y1, xking, yking, typef, check, line_legal, colour
                     line += all_moves_on_line(position, vector, x1, y1, check, line_legal, colour)
                 return line
             elif typef == PAWN and xking < x1:
-                return all_moves_on_line(position, (1, 0), x1, y1, check, line_legal, colour, 1)
+                return all_moves_on_line(position, (change_x_coord, 0), x1, y1, check, line_legal, colour, 1)
         elif (x1 - xking - y1 + yking) == 0:
             if typef in [BISHOP, QUEEN]:
                 for vector in [(1, 1), (-1, -1)]:
                     line += all_moves_on_line(position, vector, x1, y1, check, line_legal, colour)
                 return line
             elif typef == PAWN:
-                if position.get_avail_colour_figure(x1 + change_x_coord, y1 + change_y_coord, 1 - colour):
+                if position.get_avail_colour_figure(x1 + change_x_coord, y1 + change_y_coord, 1 - colour) or [x1 + change_x_coord, y1 + change_y_coord] == passant:
                     return [[x1, y1, x1 + change_x_coord, y1 + change_y_coord]]
         else:
             if typef in [BISHOP, QUEEN]:
@@ -175,12 +176,12 @@ def bunch_moves(position, x1, y1, xking, yking, typef, check, line_legal, colour
                     line += all_moves_on_line(position, vector, x1, y1, check, line_legal, colour)
                 return line 
             elif typef == PAWN:
-                if position.get_avail_colour_figure(x1 + change_x_coord, y1 - change_y_coord, 1 - colour):
+                if position.get_avail_colour_figure(x1 + change_x_coord, y1 - change_y_coord, 1 - colour) or [x1 + change_x_coord, y1 + change_y_coord] == passant:
                     return [[x1, y1, x1 + change_x_coord, y1 - change_y_coord]]     
     return []
 
 
-def king_moves(position, x, y, colour):
+def king_moves(position, x, y, colour, castling_list):
     line = []
     counter = 0
     for vector in KING_MOVES:
@@ -196,10 +197,36 @@ def king_moves(position, x, y, colour):
             position.data[x1][y1] = number_cell
             position.change_coords(KING, 0, colour, x, y)
             counter += 1
+    for i in [1, -1]:
+        check_castle = False
+        castle = SHORT_CASTLE
+        if i == 1:
+            castle = BIG_CASTLE        
+        for vector in [(0, i * 1), (0, i * 2)]:
+            if castling_list[colour * 2 + castle]:
+                x1, y1 = x + vector[0], y + vector[1]
+                if not position.get_avail_figure(x1, y1):
+                    position.data[x][y] = 0
+                    position.data[x1][y1] = KING * (colour + 1)
+                    position.change_coords(KING, 0, colour, x1, y1) 
+                    if inspect_check(position, colour)[0] != 0:
+                        check_castle = True
+                    position.data[x][y] = KING * (colour + 1)
+                    position.data[x1][y1] = 0
+                    position.change_coords(KING, 0, colour, x, y)                         
+        if not check_castle:
+            if i == 1 and castling_list[colour * 2]:
+                line += [["0-0"]]
+                castling_list[colour * 2] = False
+                castling_list[colour * 2 + 1] = False
+            elif i == -1 and castling_list[colour * 2 + 1]:    
+                line += [["0-0-0"]]  
+                castling_list[colour * 2] = False
+                castling_list[colour * 2 + 1] = False        
     return line         
                 
                                
-def legal_moves(position, colour):
+def legal_moves(position, colour, castling_list=[False, False, False, False], passant=False):
     checks, line, line_legal = inspect_check(position, colour)
     xking, yking = position.return_coords(KING, 0, colour)
     list_moves = []
@@ -210,61 +237,113 @@ def legal_moves(position, colour):
                     x, y = coords[0], coords[1]
                     if checks == 0:
                         if [x, y] not in line:
-                            list_moves += get_move(position, figure, x, y, line_legal, colour)
+                            list_moves += get_move(position, figure, x, y, line_legal, colour, False, passant)
                         else:
-                            list_moves += bunch_moves(position, x, y, xking, yking, figure, checks, line_legal, colour)         
+                            list_moves += bunch_moves(position, x, y, xking, yking, figure, checks, line_legal, colour, passant)         
                     else:
                         if [x, y] not in line:
-                            list_moves += get_move(position, figure, x, y, line_legal, colour, True)
+                            list_moves += get_move(position, figure, x, y, line_legal, colour, True, passant)
             else:
                 for coords in position.get_list(figure, colour):
                     x, y = coords[0], coords[1]
                     if checks == 0:
                         if [x, y] not in line:
-                            list_moves += get_move(position, figure, x, y, line_legal, colour)
+                            list_moves += get_move(position, figure, x, y, line_legal, colour, False, passant)
                         else:
-                            list_moves += bunch_moves(position, x, y, xking, yking, figure, checks, line_legal, colour)         
+                            list_moves += bunch_moves(position, x, y, xking, yking, figure, checks, line_legal, colour, passant)         
                     else:
                         if [x, y] not in line:
-                            list_moves += get_move(position, figure, x, y, line_legal, colour, True)                
-    list_moves += king_moves(position, xking, yking, colour) 
+                            list_moves += get_move(position, figure, x, y, line_legal, colour, True, passant)                
+    list_moves += king_moves(position, xking, yking, colour, castling_list) 
     return list_moves, checks      
     
+def castle_move(position, length, colour):
+    x, y = colour * 7, START_KING
+    x1, y1 = colour * 7, START_KING + length
+    if length == 2:
+        x_rook_start, y_rook_start = colour * 7, 7
+        x_rook_end, y_rook_end = colour * 7, 5
+    else:
+        x_rook_start, y_rook_start = colour * 7, 0
+        x_rook_end, y_rook_end = colour * 7, 3
+    change_pos(position, x, y, x1, y1, 0, 6 * (colour + 1)) 
+    position.change_coords(KING, 0, colour, x1, y1)
+    change_pos(position, x_rook_start, y_rook_start, x_rook_end, y_rook_end, 0, 4 + 6 * colour)
+    if (x_rook_start, y_rook_start == position.return_coords(ROOK, 0, colour)):
+        position.change_coords(ROOK, 0, colour, x_rook_end, y_rook_end) 
+    else:
+        position.change_coords(ROOK, 1, colour, x_rook_end, y_rook_end) 
+            
+    
+def castle_reverse(position, length, colour):
+    x, y = colour * 7, START_KING
+    x1, y1 = colour * 7, START_KING - length
+    if length == 2:
+        x_rook_start, y_rook_start = colour * 7, 7
+        x_rook_end, y_rook_end = colour * 7, 5
+    else:
+        x_rook_start, y_rook_start = colour * 7, 0
+        x_rook_end, y_rook_end = colour * 7, 3 
+    change_pos(position, x, y, x1, y1, 0, 6 * (colour + 1)) 
+    position.change_coords(KING, 0 , colour, x, y)
+    change_pos(position, x_rook_end, y_rook_end, x_rook_start, y_rook_start, 0, 6 * (colour + 1)) 
+    if (x_rook_start, y_rook_start == position.return_coords(ROOK, 0, colour)):
+        position.change_coords(ROOK, 0, colour, x_rook_end, y_rook_end) 
+    else:
+        position.change_coords(ROOK, 1, colour, x_rook_end, y_rook_end)     
+    
 
-   
-def make_move(position, colour, length):
-    list_moves, checks = legal_moves(position, colour)
+def make_move(position, colour, length, castling_list=[False, False, False, False], passant=False):
+    list_moves, checks = legal_moves(position, colour, castling_list, passant)
     if not length and len(list_moves) == 0 and checks > 0:
         return True
     elif not length:
         return False
     for move in list_moves:
-        x, y, x1, y1 = move[0], move[1], move[2], move[3]
-        number_cell = position.data[x][y]
-        number_end = position.data[x1][y1]
-        change_pos(position, x, y, x1, y1, 0, number_cell)
-        for i in range(len(position.white[number_cell - 1])):
-            if position.white[number_cell - 1][i] == [x, y]:
-                change_number = i
-                position.change_coords(number_cell, i, WHITE, x1, y1)
-                delete = False
-                if number_end > 0:
-                    for figures in position.black:
-                        if [x1, y1] in figures:
-                            delete = True
-                            delete_figures = figures
-                            figures.remove([x1, y1])  
-                break   
-        if make_move(position, 1 - colour, length - 1):
-            if delete:
-                delete_figures += [x1, y1]
+        if move != ["0-0"] and move != ["0-0-0"]:
+            x, y, x1, y1 = move[0], move[1], move[2], move[3]
+            number_cell = position.data[x][y]
+            number_end = position.data[x1][y1]
+            change_pos(position, x, y, x1, y1, 0, number_cell)
+            for i in range(len(position.white[number_cell - 1])):
+                if position.white[number_cell - 1][i] == [x, y]:
+                    change_number = i
+                    position.change_coords(number_cell, i, WHITE, x1, y1)
+                    delete = False
+                    if number_end > 0:
+                        for figures in position.black:
+                            if [x1, y1] in figures:
+                                delete = True
+                                delete_figures = figures
+                                number_delete = position.black.index(figures)
+                                figures.remove([x1, y1])     
+                    break              
+        elif move == ["0-0"]:
+            castle_move(position, SHORT, colour)
+        else:
+            castle_move(position, BIG, colour) 
+        if make_move(position, 1 - colour, length - 1, castling_list, False):
             change_pos(position, x, y, x1, y1, number_cell, number_end)
             position.change_coords(number_cell, i, WHITE, x, y)
             if delete:
-                delete_figures += [x1, y1]
-            return [x, y, x1, y1] 
-        change_pos(position, x, y, x1, y1, number_cell, number_end)
-        position.change_coords(number_cell, i, WHITE, x, y)
+                delete_figures += [[x1, y1]]
+                position.black[number_delete] = delete_figures 
+            if move != ["0-0"] and move != ["0-0-0"]:    
+                return [x, y, x1, y1]
+            elif move == ["0-0"]:
+                return [ANSWER_CASTLE_SHORT, ANSWER_CASTLE_SHORT, ANSWER_CASTLE_SHORT, ANSWER_CASTLE_SHORT]
+            else:
+                return [ANSWER_CASTLE_BIG, ANSWER_CASTLE_BIG, ANSWER_CASTLE_BIG, ANSWER_CASTLE_BIG]
+        if move != ["0-0"] and move != ["0-0-0"]:
+            change_pos(position, x, y, x1, y1, number_cell, number_end)
+            position.change_coords(number_cell, i, WHITE, x, y)
+            if delete:
+                delete_figures += [[x1, y1]]
+                position.black[number_delete] = delete_figures
+        elif move == ["0-0"]:
+            castle_reverse(position, SHORT, colour)
+        else:
+            castle_reverse(position, BIG, colour) 
     return [-1, -1, -1, -1]    
        
             
