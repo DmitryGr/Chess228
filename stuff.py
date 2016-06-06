@@ -20,7 +20,27 @@ def course_record(x, y, x1, y1, figure, eat):
     answer += str(x1 + 1)
     if figure == PAWN and eat:
         answer = line_vert[y] + answer
-    return answer   
+    return answer 
+
+def queen_record(y_start, x, y, figure):
+    answer = ""
+    line_vert = ["a", "b", "c", "d", "e", "f", "g", "h"]
+    line_figures = ["N", "B", "R", "Q"]
+    if y_start == y:
+        answer += line_vert[y]
+        answer += str(x + 1)
+        for i in range(KNIGHT, QUEEN + 1):
+            if i == figure:
+                answer += line_figures[i - 2]
+    else:
+        answer += line_vert[y_start]
+        answer += line_vert[y]
+        for i in range(KNIGHT, QUEEN + 1):
+            if i == figure:
+                answer += line_figures[i - 2]          
+    return answer
+    
+    
 
 def print_data(list):
     print()

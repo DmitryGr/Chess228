@@ -15,10 +15,16 @@ def all_moves_on_line(position, vector, x, y, check, line_legal, colour, max_ste
                     if vector[1] != 0:
                         if position.get_avail_certain_figure(x1, y1, [PAWN, KNIGHT, BISHOP, ROOK, QUEEN], 1 - colour):
                             line += [[x, y, x1, y1]]
+                        return line    
                     else:
                         if not position.get_avail_figure(x1, y1):
-                            line += [[x, y, x1, y1]]
-                    return line        
+                            line += [[x, y, x1, y1]]                            
+                            if max_step == 1:
+                                return line 
+                            else:
+                                max_step = 1 
+                        else:
+                            return line
                 elif not position.get_avail_colour_figure(x1, y1, colour):
                     line += [[x, y, x1, y1]]  
                 if position.get_avail_figure(x1, y1):
@@ -31,8 +37,12 @@ def all_moves_on_line(position, vector, x, y, check, line_legal, colour, max_ste
                                 line += [[x, y, x1, y1]]
                         else:
                             if not position.get_avail_figure(x1, y1):
-                                line += [[x, y, x1, y1]]
-                        return line                    
+                                line += [[x, y, x1, y1]]                            
+                            if max_step == 1:
+                                return line 
+                            else:
+                                max_step = 1
+                                
                 else:    
                     if position.get_avail_colour_figure(x1, y1, colour):
                         return line
@@ -134,7 +144,11 @@ def get_move(position, figure, x, y, line_legal, colour, check=False, passant=Fa
         for vector in VERT_MOVES:
             line += all_moves_on_line(position, vector, x, y, check, line_legal, colour)
     if figure == PAWN:
-        for vector in [(pawn_vert, 1), (pawn_vert, -1), (pawn_vert, 0)]:
+        if x == 1:
+            line += all_moves_on_line(position, (pawn_vert, 0), x, y, check, line_legal, colour, 2, True)
+        else:
+            line += all_moves_on_line(position, (pawn_vert, 0), x, y, check, line_legal, colour, 1, True)
+        for vector in [(pawn_vert, 1), (pawn_vert, -1)]:
             line += all_moves_on_line(position, vector, x, y, check, line_legal, colour, 1, True)         
         if passant == [x + pawn_vert, y + 1] or passant == [x + pawn_vert, y - 1]:
             line += [[x, y, passant[0], passant[1]]]
@@ -161,7 +175,10 @@ def bunch_moves(position, x1, y1, xking, yking, typef, check, line_legal, colour
                     line += all_moves_on_line(position, vector, x1, y1, check, line_legal, colour)
                 return line
             elif typef == PAWN and xking < x1:
-                return all_moves_on_line(position, (change_x_coord, 0), x1, y1, check, line_legal, colour, 1)
+                if x1 == 1:
+                    return all_moves_on_line(position, (change_x_coord, 0), x1, y1, check, line_legal, colour, 1)
+                else:
+                    return all_moves_on_line(position, (change_x_coord, 0), x1, y1, check, line_legal, colour, 2)
         elif (x1 - xking - y1 + yking) == 0:
             if typef in [BISHOP, QUEEN]:
                 for vector in [(1, 1), (-1, -1)]:
@@ -258,17 +275,18 @@ def legal_moves(position, colour, castling_list=[False, False, False, False], pa
     return list_moves, checks      
     
 def castle_move(position, length, colour):
-    x, y = colour * 7, START_KING
-    x1, y1 = colour * 7, START_KING + length
+    start_vert = colour * 7
+    x, y = start_vert, START_KING
+    x1, y1 = start_vert, START_KING + length
     if length == 2:
-        x_rook_start, y_rook_start = colour * 7, 7
-        x_rook_end, y_rook_end = colour * 7, 5
+        x_rook_start, y_rook_start = start_vert, START_ROOK_SHORT
+        x_rook_end, y_rook_end = start_vert, END_ROOK_SHORT
     else:
-        x_rook_start, y_rook_start = colour * 7, 0
-        x_rook_end, y_rook_end = colour * 7, 3
+        x_rook_start, y_rook_start = start_vert, START_ROOK_BIG
+        x_rook_end, y_rook_end = start_vert, END_ROOK_BIG
     change_pos(position, x, y, x1, y1, 0, 6 * (colour + 1)) 
     position.change_coords(KING, 0, colour, x1, y1)
-    change_pos(position, x_rook_start, y_rook_start, x_rook_end, y_rook_end, 0, 4 + 6 * colour)
+    change_pos(position, x_rook_start, y_rook_start, x_rook_end, y_rook_end, 0, ROOK + 6 * colour)
     if (x_rook_start, y_rook_start == position.return_coords(ROOK, 0, colour)):
         position.change_coords(ROOK, 0, colour, x_rook_end, y_rook_end) 
     else:
@@ -276,21 +294,49 @@ def castle_move(position, length, colour):
             
     
 def castle_reverse(position, length, colour):
-    x, y = colour * 7, START_KING
-    x1, y1 = colour * 7, START_KING - length
+    start_vert = colour * 7
+    x, y = start_vert, START_KING
+    x1, y1 = start_vert, START_KING - length
     if length == 2:
-        x_rook_start, y_rook_start = colour * 7, 7
-        x_rook_end, y_rook_end = colour * 7, 5
+        x_rook_start, y_rook_start = start_vert, START_ROOK_SHORT
+        x_rook_end, y_rook_end = start_vert, END_ROOK_SHORT
     else:
-        x_rook_start, y_rook_start = colour * 7, 0
-        x_rook_end, y_rook_end = colour * 7, 3 
+        x_rook_start, y_rook_start = start_vert, START_ROOK_BIG
+        x_rook_end, y_rook_end = start_vert, END_ROOK_BIG
     change_pos(position, x, y, x1, y1, 0, 6 * (colour + 1)) 
     position.change_coords(KING, 0 , colour, x, y)
     change_pos(position, x_rook_end, y_rook_end, x_rook_start, y_rook_start, 0, 6 * (colour + 1)) 
     if (x_rook_start, y_rook_start == position.return_coords(ROOK, 0, colour)):
         position.change_coords(ROOK, 0, colour, x_rook_end, y_rook_end) 
     else:
-        position.change_coords(ROOK, 1, colour, x_rook_end, y_rook_end)     
+        position.change_coords(ROOK, 1, colour, x_rook_end, y_rook_end)  
+        
+def move_to_queen(position, x_start, y_start, x, y, colour, length, castling_list):
+    for figure in FIGURES:
+        delete = False
+        change_pos(position, x_start, y_start, x, y, 0, figure)
+        position.white[PAWN - 1].remove([x_start, y_start])
+        position.white[figure - 1] += [[x, y]]
+        for figures in position.black:
+            if [x, y] in figures:
+                delete = True
+                delete_figures = figures
+                number_delete = position.black.index(figures)
+                figures.remove([x, y]) 
+        mate = False
+        if make_move(position, 1 - colour, length - 1, castling_list):
+            mate = True
+        change_pos(position, x_start, y_start, x, y, PAWN, 0)
+        position.white[figure - 1].remove([x, y])
+        position.white[PAWN - 1] += [[x_start, y_start]]  
+        if delete:
+            delete_figures += [[x, y]]
+            position.black[number_delete] = delete_figures         
+        if mate:
+            return True, figure
+    return False, None   
+        
+    
     
 
 def make_move(position, colour, length, castling_list=[False, False, False, False], passant=False):
@@ -302,6 +348,12 @@ def make_move(position, colour, length, castling_list=[False, False, False, Fals
     for move in list_moves:
         if move != ["0-0"] and move != ["0-0-0"]:
             x, y, x1, y1 = move[0], move[1], move[2], move[3]
+            move_pawn_to_queen = False
+            if position.data[x][y] == PAWN and x1 == 7:
+                move_pawn_to_queen = True
+        if move != ["0-0"] and move != ["0-0-0"] and move_pawn_to_queen == False:
+            if position.data[x][y] == PAWN and x1 - x == 2:
+                passant = [x1 - 1, y1]     
             number_cell = position.data[x][y]
             number_end = position.data[x1][y1]
             change_pos(position, x, y, x1, y1, 0, number_cell)
@@ -317,14 +369,19 @@ def make_move(position, colour, length, castling_list=[False, False, False, Fals
                                 delete_figures = figures
                                 number_delete = position.black.index(figures)
                                 figures.remove([x1, y1])     
-                    break              
+                    break
+        elif move_pawn_to_queen:
+            mate, figure = move_to_queen(position, x, y, x1, y1, colour, length, castling_list)
+            if mate:
+                return [figure, y, None, y1]
+            continue
         elif move == ["0-0"]:
             castle_move(position, SHORT, colour)
         else:
-            castle_move(position, BIG, colour) 
-        if make_move(position, 1 - colour, length - 1, castling_list, False):
+            castle_move(position, BIG, colour)
+        if make_move(position, 1 - colour, length - 1, castling_list, passant):
             change_pos(position, x, y, x1, y1, number_cell, number_end)
-            position.change_coords(number_cell, i, WHITE, x, y)
+            position.change_coords(number_cell, change_number, WHITE, x, y)
             if delete:
                 delete_figures += [[x1, y1]]
                 position.black[number_delete] = delete_figures 
@@ -336,7 +393,7 @@ def make_move(position, colour, length, castling_list=[False, False, False, Fals
                 return [ANSWER_CASTLE_BIG, ANSWER_CASTLE_BIG, ANSWER_CASTLE_BIG, ANSWER_CASTLE_BIG]
         if move != ["0-0"] and move != ["0-0-0"]:
             change_pos(position, x, y, x1, y1, number_cell, number_end)
-            position.change_coords(number_cell, i, WHITE, x, y)
+            position.change_coords(number_cell, change_number, WHITE, x, y)
             if delete:
                 delete_figures += [[x1, y1]]
                 position.black[number_delete] = delete_figures
