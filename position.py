@@ -1,4 +1,4 @@
-from constants import X_COORD, Y_COORD, WHITE, BLACK
+from constants import *
 
 class Position:
     def __init__(self, data):
@@ -50,3 +50,15 @@ class Position:
             return self.white[figure - 1]
         else:
             return self.black[figure - 1]
+        
+    def remove_figure(self, colour, figure, x, y):
+        if colour == WHITE:
+            self.white[PAWN - 1].remove([x, y])
+        else:
+            self.black[PAWN - 1].remove([x, y])
+            
+    def plus_figure(self, colour, figure, x, y):
+        if colour == WHITE:
+            self.white[PAWN - 1] += [[x, y]]
+        else:
+            self.black[PAWN - 1] += [[x, y]]
