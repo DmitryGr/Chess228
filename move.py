@@ -198,7 +198,7 @@ def bunch_moves(position, x1, y1, xking, yking, typef, check, line_legal, colour
     return []
 
 
-def king_moves(position, x, y, colour, castling_list):
+def king_moves(position, x, y, colour, castling_list=[False, False, False, False]):
     line = []
     counter = 0
     for vector in KING_MOVES:
