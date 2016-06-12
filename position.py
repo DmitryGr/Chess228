@@ -53,12 +53,12 @@ class Position:
         
     def remove_figure(self, colour, figure, x, y):
         if colour == WHITE:
-            self.white[PAWN - 1].remove([x, y])
+            self.white[figure - 1].remove([x, y])
         else:
-            self.black[PAWN - 1].remove([x, y])
+            self.black[figure - 1].remove([x, y])
             
     def plus_figure(self, colour, figure, x, y):
         if colour == WHITE:
-            self.white[PAWN - 1] += [[x, y]]
+            self.white[figure - 1] += [[x, y]]
         else:
-            self.black[PAWN - 1] += [[x, y]]
+            self.black[figure - 1] += [[x, y]]

@@ -313,10 +313,16 @@ def castle_reverse(position, length, colour):
         
 def move_to_queen(position, x_start, y_start, x, y, colour, length, castling_list):
     for figure in FIGURES:
+        if colour == WHITE:
+            position.current = position.white
+            position.enemy = position.black
+        else:
+            position.current = position.black
+            position.enemy = position.white         
         delete = False
         change_pos(position, x_start, y_start, x, y, 0, figure)
-        position.remove_figure(colour, PAWN - 1, x_start, y_start)
-        position.plus_figure(colour, figure - 1, x, y)
+        position.remove_figure(colour, PAWN, x_start, y_start)
+        position.plus_figure(colour, figure, x, y)
         for figures in position.enemy:
             if [x, y] in figures:
                 delete = True
@@ -327,8 +333,8 @@ def move_to_queen(position, x_start, y_start, x, y, colour, length, castling_lis
         if make_move(position, 1 - colour, length - 1, castling_list):
             mate = True
         change_pos(position, x_start, y_start, x, y, PAWN, 0)
-        position.remove_figure(colour, figure - 1, x, y)
-        position.current[PAWN - 1] += [[x_start, y_start]]  
+        position.remove_figure(colour, figure, x, y)
+        position.plus_figure(colour, PAWN, x_start, y_start)
         if delete:
             delete_figures += [[x, y]]
             position.enemy[number_delete] = delete_figures         
@@ -338,8 +344,8 @@ def move_to_queen(position, x_start, y_start, x, y, colour, length, castling_lis
         
 def return_position(position, x, y, x1, y1, number_cell, number_end, number_cell_in_list, change_number, colour, delete, delete_figures, number_delete):
     change_pos(position, x, y, x1, y1, number_cell, number_end)
-    for i in range(len(position.current[number_cell_in_list])):
-        if position.current[number_cell_in_list][i] == [x1, y1]:
+    for i in range(len(position.current[number_cell_in_list - 1])):
+        if position.current[number_cell_in_list - 1][i] == [x1, y1]:
             change_number = i
     position.change_coords(number_cell_in_list, change_number, colour, x, y)
     if delete:
@@ -350,26 +356,18 @@ def return_position(position, x, y, x1, y1, number_cell, number_end, number_cell
 
 def make_move(position, colour, length, castling_list=[False, False, False, False], passant=False):
     list_moves, checks = legal_moves(position, colour, castling_list, passant)
+    list_moves = list_moves[::-1]
     if len(list_moves) == 0 and checks > 0:
         return True
     elif not length:
         return False  
     for move in list_moves:
-        if length == 3:
-            print("---", position.black)
-            print("***", move)  
-        if length == 2:
-            print("--", position.black)
-            print("**", move)
-        if length == 1:  
-            print("-", position.black)
-            print("*", move)
         if colour == WHITE:
             position.current = position.white
             position.enemy = position.black
         else:
             position.current = position.black
-            position.enemy = position.white          
+            position.enemy = position.white               
         delete_figures = []
         number_delete = 0
         if move != ["0-0"] and move != ["0-0-0"]:
@@ -381,10 +379,7 @@ def make_move(position, colour, length, castling_list=[False, False, False, Fals
             passant = False
             if position.data[x][y] == PAWN and x1 - x == 2:
                 passant = [x1 - 1, y1]     
-            number_cell = position.data[x][y]
-            if number_cell == 0:
-                print(list_moves)
-                print_data(position.data)    
+            number_cell = position.data[x][y]   
             number_cell_in_list = number_cell % 6
             number_end = position.data[x1][y1]
             change_pos(position, x, y, x1, y1, 0, number_cell)
@@ -396,16 +391,13 @@ def make_move(position, colour, length, castling_list=[False, False, False, Fals
                     if number_end > 0:
                         for figures in position.enemy:
                             if [x1, y1] in figures:
-                                print(figures)
                                 delete = True
                                 number_delete = position.enemy.index(figures)
                                 figures.remove([x1, y1])   
-                                delete_figures = figures
-                                print("%%%", delete_figures)
-                                print(x1, y1)                                
+                                delete_figures = figures                            
                                 break
                     break
-        elif move_pawn_to_queen:
+        elif move_pawn_to_queen:        
             mate, figure = move_to_queen(position, x, y, x1, y1, colour, length, castling_list)
             if mate:
                 return [figure, y, None, y1]
@@ -415,8 +407,12 @@ def make_move(position, colour, length, castling_list=[False, False, False, Fals
         else:
             castle_move(position, BIG, colour)   
         answer = make_move(position, 1 - colour, length - 1, castling_list, passant)
-        print(delete_figures)
-        print(length)
+        if colour == WHITE:
+            position.current = position.white
+            position.enemy = position.black
+        else:
+            position.current = position.black
+            position.enemy = position.white          
         if length == 3:
             if answer:
                 return_position(position, x, y, x1, y1, number_cell, number_end, number_cell_in_list, change_number, colour, delete, delete_figures, number_delete) 
