@@ -2,6 +2,7 @@ from stuff import read_position, course_record, print_data, transformation_recor
 from move import make_move
 from constants import *
 from fen import fen_format
+import time
 
 
 def main():
@@ -11,7 +12,9 @@ def main():
             continue
         data, colour, castling_list, passant = fen_format(input_str)    
         position = read_position(data)
-        x, y, x1, y1 = make_move(position, colour, 3, castling_list, passant)
+        time1 = time.time()
+        length = int(input())
+        x, y, x1, y1 = make_move(position, colour, length, length, castling_list, passant)
         pawn_queen = False
         if x1 is None:
             pawn_queen = True
@@ -29,6 +32,7 @@ def main():
             print("0-0-0")
         else:
             print("0-0")
+        print(time.time() - time1)    
         
 
 main()         
