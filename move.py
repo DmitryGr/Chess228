@@ -159,15 +159,18 @@ def bunch_moves(position, x1, y1, xking, yking, typef, check, line_legal, colour
         if colour == WHITE:
             change_x_coord = 1
             change_y_coord = 1
+            pawn_big_start = 1
         else:
             change_x_coord = -1
-            change_y_coord = -1          
+            change_y_coord = -1
+            pawn_big_start = 6
         line = []
         if typef == KNIGHT:
             return []
-        elif x1 == xking and typef in [ROOK, QUEEN]:
-            for vector in [(0, 1), (0, -1)]:
-                line += all_moves_on_line(position, vector, x1, y1, check, line_legal, colour)
+        elif x1 == xking:
+            if typef in [ROOK, QUEEN]:
+                for vector in [(0, 1), (0, -1)]:
+                    line += all_moves_on_line(position, vector, x1, y1, check, line_legal, colour)
             return line
         elif y1 == yking:
             if typef in [ROOK, QUEEN]:
@@ -175,10 +178,10 @@ def bunch_moves(position, x1, y1, xking, yking, typef, check, line_legal, colour
                     line += all_moves_on_line(position, vector, x1, y1, check, line_legal, colour)
                 return line
             elif typef == PAWN and xking < x1:
-                if x1 == 1:
-                    return all_moves_on_line(position, (change_x_coord, 0), x1, y1, check, line_legal, colour, 1)
+                if x1 == pawn_big_start:
+                    return all_moves_on_line(position, (change_x_coord, 0), x1, y1, check, line_legal, colour, 2, True)
                 else:
-                    return all_moves_on_line(position, (change_x_coord, 0), x1, y1, check, line_legal, colour, 2)
+                    return all_moves_on_line(position, (change_x_coord, 0), x1, y1, check, line_legal, colour, 1, True)
         elif (x1 - xking - y1 + yking) == 0:
             if typef in [BISHOP, QUEEN]:
                 for vector in [(1, 1), (-1, -1)]:
@@ -320,6 +323,7 @@ def move_to_queen(position, x_start, y_start, x, y, colour, length, length_start
             position.current = position.black
             position.enemy = position.white         
         delete = False
+        number_end = position.data[x][y]
         change_pos(position, x_start, y_start, x, y, 0, figure)
         position.remove_figure(colour, PAWN, x_start, y_start)
         position.plus_figure(colour, figure, x, y)
@@ -337,7 +341,8 @@ def move_to_queen(position, x_start, y_start, x, y, colour, length, length_start
         position.plus_figure(colour, PAWN, x_start, y_start)
         if delete:
             delete_figures += [[x, y]]
-            position.enemy[number_delete] = delete_figures         
+            position.enemy[number_delete] = delete_figures
+            position.data[x][y] = number_end
         if mate:
             return True, figure
     return False, None   
@@ -354,13 +359,15 @@ def return_position(position, x, y, x1, y1, number_cell, number_end, number_cell
     
     
 
-def make_move(position, colour, length, length_start, castling_list=[False, False, False, False], passant=False):
+def make_move(position, colour, length, length_start, castling_list=[False, False, False, False], passant=False):   
     list_moves, checks = legal_moves(position, colour, castling_list, passant)
-    if len(list_moves) == 0 and checks > 0:
+    if len(list_moves) == 0 and checks > 0: 
         return True
+    elif len(list_moves) == 0 and checks == 0:
+        return False
     elif not length:
-        return False  
-    for move in list_moves:
+        return False      
+    for move in list_moves:      
         if colour == WHITE:
             position.current = position.white
             position.enemy = position.black
@@ -378,7 +385,7 @@ def make_move(position, colour, length, length_start, castling_list=[False, Fals
             passant = False
             if position.data[x][y] == PAWN and x1 - x == 2:
                 passant = [x1 - 1, y1]     
-            number_cell = position.data[x][y]   
+            number_cell = position.data[x][y] 
             number_cell_in_list = number_cell % 6
             number_end = position.data[x1][y1]
             change_pos(position, x, y, x1, y1, 0, number_cell)
@@ -396,7 +403,7 @@ def make_move(position, colour, length, length_start, castling_list=[False, Fals
                                 delete_figures = figures                            
                                 break
                     break
-        elif move_pawn_to_queen:        
+        elif move_pawn_to_queen: 
             mate, figure = move_to_queen(position, x, y, x1, y1, colour, length, length_start, castling_list)
             if mate and length == length_start:
                 return [figure, y, None, y1]
