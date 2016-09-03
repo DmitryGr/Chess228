@@ -220,7 +220,7 @@ def king_moves(position, x, y, colour, castling_list=[False, False, False, False
     for i in [1, -1]:
         check_castle = False
         castle = SHORT_CASTLE
-        if i == 1:
+        if i == -1:
             castle = BIG_CASTLE 
         if castling_list[colour * 2 + castle]:   
             for vector in [(0, i * 1), (0, i * 2)]:
@@ -233,7 +233,11 @@ def king_moves(position, x, y, colour, castling_list=[False, False, False, False
                         check_castle = True   
                     position.data[x][y] = KING * (colour + 1)
                     position.data[x1][y1] = 0
-                    position.change_coords(KING, 0, colour, x, y)                         
+                    position.change_coords(KING, 0, colour, x, y) 
+                else:
+                    check_castle = True  
+            if BIG_CASTLE and position.get_avail_figure(x, y - 3):
+                check_castle = True
             if not check_castle:
                 if i == 1 and castling_list[colour * 2]:
                     line += [["0-0"]]
@@ -273,7 +277,7 @@ def legal_moves(position, colour, castling_list=[False, False, False, False], pa
                             list_moves += bunch_moves(position, x, y, xking, yking, figure, checks, line_legal, colour, passant)         
                     else:
                         if [x, y] not in line:
-                            list_moves += get_move(position, figure, x, y, line_legal, colour, True, passant)                
+                            list_moves += get_move(position, figure, x, y, line_legal, colour, True, passant)                      
     list_moves += king_moves(position, xking, yking, colour, castling_list) 
     return list_moves, checks      
     
@@ -339,7 +343,7 @@ def movement_to_queen(position, x_start, y_start, x, y, colour, figure):
  
 
 
-def remove_to_queen(position, delete, delete_figures, number_end, colour, x_start, y_start, x, y, figure):
+def remove_to_queen(position, delete, delete_figures, number_end, colour, x_start, y_start, x, y, figure, number_delete):
     change_pos(position, x_start, y_start, x, y, PAWN, 0)
     position.remove_figure(colour, figure, x, y)
     position.plus_figure(colour, PAWN, x_start, y_start)
@@ -355,7 +359,7 @@ def move_to_queen(position, x_start, y_start, x, y, colour, colour_start, length
         mate = False
         if make_move(position, 1 - colour, colour_start, length - 1, length_start, False, [], castling_list):
             mate = True  
-        remove_to_queen(position, delete, delete_figures, number_end, colour, x_start, y_start, x, y, figure)
+        remove_to_queen(position, delete, delete_figures, number_end, colour, x_start, y_start, x, y, figure, number_delete)
         if mate:
             return True, figure  
     return False, None   
@@ -449,8 +453,7 @@ def change_list(position, list_moves, colour):
             else:
                 number_cell, number_cell_in_list, number_end, change_number, delete_figures, passant, number_delete, delete = movement_figure(position, colour, x, y, x1, y1)
                 list_checks, list_not, list_checks_moves, list_not_moves, list_eat, list_eat_moves = add_moves(position, list_checks, list_not, list_checks_moves, list_not_moves, list_eat, list_eat_moves, colour, move, delete)
-                return_position(position, x, y, x1, y1, number_cell, number_end, number_cell_in_list, change_number, colour, delete, delete_figures, number_delete)
-       
+                return_position(position, x, y, x1, y1, number_cell, number_end, number_cell_in_list, change_number, colour, delete, delete_figures, number_delete)       
     return list_checks + list_eat + list_not, list_checks_moves + list_eat_moves + list_not_moves          
                 
                 
@@ -458,7 +461,7 @@ def make_move(position, colour, start_colour, length, length_start, future_moves
     if not future_moves_tf:
         list_moves, checks = legal_moves(position, colour, castling_list, passant)
     else:
-        list_moves, checks = list_future[0], list_future[1]    
+        list_moves, checks = list_future[0], list_future[1]  
     if len(list_moves) == 0 and checks: 
         return True
     elif len(list_moves) == 0 and not checks:

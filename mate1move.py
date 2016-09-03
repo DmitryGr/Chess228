@@ -13,7 +13,7 @@ def main():
         data, colour, castling_list, passant = fen_format(input_str)    
         position = read_position(data)
         time1 = time.time()
-        length = 3
+        length = int(input())
         x, y, x1, y1 = make_move(position, colour, colour, length, length, False, [], castling_list, passant)
         pawn_queen = False     
         if x1 is None:
