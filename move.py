@@ -255,7 +255,7 @@ def legal_moves(position, colour, castling_list=[False, False, False, False], pa
     xking, yking = position.return_coords(KING, 0, colour)
     list_moves = []
     if checks < 2:
-        for figure in [PAWN, KNIGHT, BISHOP, ROOK, QUEEN]:
+        for figure in [QUEEN, ROOK, KNIGHT, BISHOP, PAWN]:
             if colour == WHITE:
                 for coords in position.get_list(figure, colour):
                     x, y = coords[0], coords[1]
@@ -319,7 +319,7 @@ def castle_reverse(position, length, colour):
         position.change_coords(ROOK, 1, colour, x_rook_start, y_rook_start)      
  
  
-def movement_to_queen(position, x_start, y_start, x, y, colour, figure): 
+def movement_to_queen(position, x_start, y_start, x, y, colour, figure, material):
     if colour == WHITE:
         position.current = position.white
         position.enemy = position.black
@@ -330,6 +330,8 @@ def movement_to_queen(position, x_start, y_start, x, y, colour, figure):
     delete_figures = []
     number_delete = 0
     number_end = position.data[x][y]
+    if number_end:
+        material += MATERIAL_CHANGE[colour] * VALUES[number_end % 6 - 1]    
     change_pos(position, x_start, y_start, x, y, 0, figure + 6 * colour)
     position.remove_figure(colour, PAWN, x_start, y_start)
     position.plus_figure(colour, figure, x, y)
@@ -339,43 +341,52 @@ def movement_to_queen(position, x_start, y_start, x, y, colour, figure):
             delete_figures = figures
             number_delete = position.enemy.index(figures)
             figures.remove([x, y])  
-    return delete, number_delete, delete_figures, number_end        
+    return delete, number_delete, delete_figures, number_end, material       
  
 
 
-def remove_to_queen(position, delete, delete_figures, number_end, colour, x_start, y_start, x, y, figure, number_delete):
+def remove_to_queen(position, delete, delete_figures, number_end, colour, x_start, y_start, x, y, figure, number_delete, material):
+    identification(position, colour)
     change_pos(position, x_start, y_start, x, y, PAWN, 0)
     position.remove_figure(colour, figure, x, y)
     position.plus_figure(colour, PAWN, x_start, y_start)
     if delete:
+        material -= MATERIAL_CHANGE[colour] * VALUES[number_end % 6 - 1]        
         delete_figures += [[x, y]]
         position.enemy[number_delete] = delete_figures
         position.data[x][y] = number_end    
+    return material    
  
         
-def move_to_queen(position, x_start, y_start, x, y, colour, colour_start, length, length_start, castling_list):
+def move_to_queen(position, x_start, y_start, x, y, colour, colour_start, length, length_start, material, last_better, castling_list):
+    list_values = []
     for figure in FIGURES:
-        delete, number_delete, delete_figures, number_end = movement_to_queen(position, x_start, y_start, x, y, colour, figure)  
+        delete, number_delete, delete_figures, number_end, material = movement_to_queen(position, x_start, y_start, x, y, colour, figure, material)  
+        material += VALUES[figure % 6 - 1]
         mate = False
-        if make_move(position, 1 - colour, colour_start, length - 1, length_start, False, [], castling_list):
-            mate = True  
-        remove_to_queen(position, delete, delete_figures, number_end, colour, x_start, y_start, x, y, figure, number_delete)
-        if mate:
-            return True, figure  
-    return False, None   
+        answer = make_move(position, 1 - colour, colour_start, length - 1, length_start, False, [], material, last_better, castling_list)
+        list_values += [answer + figure/10]
+        material = remove_to_queen(position, delete, delete_figures, number_end, colour, x_start, y_start, x, y, figure, number_delete, material)
+        material -= VALUES[figure % 6 - 1]
+    if colour == WHITE:
+        return max(list_values), material
+    return min(list_values), material        
+      
         
-def return_position(position, x, y, x1, y1, number_cell, number_end, number_cell_in_list, change_number, colour, delete, delete_figures, number_delete):
+def return_position(position, x, y, x1, y1, number_cell, number_end, number_cell_in_list, change_number, colour, delete, delete_figures, number_delete, material):
     change_pos(position, x, y, x1, y1, number_cell, number_end)
     for i in range(len(position.current[number_cell_in_list - 1])):
         if position.current[number_cell_in_list - 1][i] == [x1, y1]:
             change_number = i
     position.change_coords(number_cell_in_list, change_number, colour, x, y)
     if delete:
+        material -= MATERIAL_CHANGE[colour] * VALUES[number_end % 6 - 1]
         delete_figures += [[x1, y1]]
         position.enemy[number_delete] = delete_figures    
+    return material    
     
 
-def movement_figure(position, colour, x, y, x1, y1):
+def movement_figure(position, colour, x, y, x1, y1, material):
     identification(position, colour)    
     passant = False
     if position.data[x][y] == PAWN and x1 - x == 2:
@@ -383,6 +394,8 @@ def movement_figure(position, colour, x, y, x1, y1):
     number_cell = position.data[x][y] 
     number_cell_in_list = number_cell % 6
     number_end = position.data[x1][y1]
+    if number_end:
+        material += MATERIAL_CHANGE[colour] * VALUES[number_end % 6 - 1]
     delete_figures = []
     number_delete = 0
     change_pos(position, x, y, x1, y1, 0, number_cell) 
@@ -399,8 +412,8 @@ def movement_figure(position, colour, x, y, x1, y1):
                         figures.remove([x1, y1])   
                         delete_figures = figures                            
                         break
-            break  
-    return number_cell, number_cell_in_list, number_end, change_number, delete_figures, passant, number_delete, delete
+            break    
+    return number_cell, number_cell_in_list, number_end, change_number, delete_figures, passant, number_delete, delete, material
     
 
 def identification(position, colour):
@@ -434,7 +447,7 @@ def add_moves(position, list_checks, list_not, list_checks_moves, list_not_moves
     
 
 
-def change_list(position, list_moves, colour):
+def change_list(position, list_moves, colour, material):
     list_checks, list_not, list_checks_moves, list_not_moves, list_eat, list_eat_moves = [], [], [], [], [], []
     for move in list_moves:
         if move == ["0-0-0"]:
@@ -451,72 +464,73 @@ def change_list(position, list_moves, colour):
                 list_checks += [move]
                 list_checks_moves += [[]]
             else:
-                number_cell, number_cell_in_list, number_end, change_number, delete_figures, passant, number_delete, delete = movement_figure(position, colour, x, y, x1, y1)
+                number_cell, number_cell_in_list, number_end, change_number, delete_figures, passant, number_delete, delete, material = movement_figure(position, colour, x, y, x1, y1, material)
                 list_checks, list_not, list_checks_moves, list_not_moves, list_eat, list_eat_moves = add_moves(position, list_checks, list_not, list_checks_moves, list_not_moves, list_eat, list_eat_moves, colour, move, delete)
-                return_position(position, x, y, x1, y1, number_cell, number_end, number_cell_in_list, change_number, colour, delete, delete_figures, number_delete)       
-    return list_checks + list_eat + list_not, list_checks_moves + list_eat_moves + list_not_moves          
+                material = return_position(position, x, y, x1, y1, number_cell, number_end, number_cell_in_list, change_number, colour, delete, delete_figures, number_delete, material)
+    return list_checks + list_eat + list_not, list_checks_moves + list_eat_moves + list_not_moves, material          
                 
                 
-def make_move(position, colour, start_colour, length, length_start, future_moves_tf, list_future ,castling_list=[False, False, False, False], passant=False):
+def make_move(position, colour, start_colour, length, length_start, future_moves_tf, list_future ,material, last_better, castling_list=[False, False, False, False], passant=False):
     if not future_moves_tf:
         list_moves, checks = legal_moves(position, colour, castling_list, passant)
     else:
         list_moves, checks = list_future[0], list_future[1]  
     if len(list_moves) == 0 and checks: 
-        return True
+        return MATERIAL_CHANGE[1 - colour] * KING_VALUE
     elif len(list_moves) == 0 and not checks:
-        return False
+        return 0
     elif not length:
-        return False 
+        return material 
     identification(position, colour)
-    list_moves, list_future_moves = change_list(position, list_moves, colour)
-    for i in range(len(list_moves)): 
+    list_moves, list_future_moves, material = change_list(position, list_moves, colour, material)
+    list_values = []
+    current_value = KING_VALUE * MATERIAL_CHANGE[1 - colour]  
+    top_level = (length == length_start)
+    for i in range(len(list_moves)):            
         move = list_moves[i]
+        move_pawn_to_queen = False
         if move != ["0-0"] and move != ["0-0-0"]:
             x, y, x1, y1 = move[0], move[1], move[2], move[3]
             move_pawn_to_queen = inspection_new_queen(position, x, y, x1)
             if not move_pawn_to_queen:            
-                number_cell, number_cell_in_list, number_end, change_number, delete_figures, passant, number_delete, delete = movement_figure(position, colour, x, y, x1, y1)
+                number_cell, number_cell_in_list, number_end, change_number, delete_figures, passant, number_delete, delete, material = movement_figure(position, colour, x, y, x1, y1, material)
             else:   
-                mate, figure = move_to_queen(position, x, y, x1, y1, colour, start_colour, length, length_start, castling_list)
-                if mate and length == length_start:
-                    return [figure, y, None, y1]
-                elif mate:
-                    return True
-                continue
+                answer, material = move_to_queen(position, x, y, x1, y1, colour, start_colour, length, length_start, material, current_value, castling_list)
+                list_values += [answer]
         elif move == ["0-0"]:
             castle_move(position, SHORT, colour)
         else:
-            castle_move(position, BIG, colour)             
-        answer = make_move(position, 1 - colour, start_colour, length - 1, length_start, len(list_future_moves[i]) > 0, list_future_moves[i], castling_list, passant)
-        identification(position, colour)         
-        if length == length_start:
-            if answer:
-                return_position(position, x, y, x1, y1, number_cell, number_end, number_cell_in_list, change_number, colour, delete, delete_figures, number_delete) 
-                if move != ["0-0"] and move != ["0-0-0"]:  
-                    return [x, y, x1, y1]
-                elif move == ["0-0"]:
-                    return [ANSWER_CASTLE_SHORT, ANSWER_CASTLE_SHORT, ANSWER_CASTLE_SHORT, ANSWER_CASTLE_SHORT]
-                else:
-                    return [ANSWER_CASTLE_BIG, ANSWER_CASTLE_BIG, ANSWER_CASTLE_BIG, ANSWER_CASTLE_BIG]
+            castle_move(position, BIG, colour)
+        if not move_pawn_to_queen:     
+            answer = make_move(position, 1 - colour, start_colour, length - 1, length_start, len(list_future_moves[i]) > 0, list_future_moves[i], material, current_value, castling_list, passant)
+            identification(position, colour)         
             if move != ["0-0"] and move != ["0-0-0"]:
-                return_position(position, x, y, x1, y1, number_cell, number_end, number_cell_in_list, change_number, colour, delete, delete_figures, number_delete)
+                material = return_position(position, x, y, x1, y1, number_cell, number_end, number_cell_in_list, change_number, colour, delete, delete_figures, number_delete, material)
             elif move == ["0-0"]:
                 castle_reverse(position, SHORT, colour)
             else:
                 castle_reverse(position, BIG, colour)
-        else:  
-            return_position(position, x, y, x1, y1, number_cell, number_end, number_cell_in_list, change_number, colour, delete, delete_figures, number_delete) 
-            if colour == start_colour and answer:
-                return True
-            elif colour != start_colour and not answer:
-                return False
-    if colour == start_colour and length != length_start:
-        return False
-    elif colour == start_colour:
-        return [-1, -1, -1, -1]
+            list_values += [answer]
+            if answer * MATERIAL_CHANGE[colour] >= current_value * MATERIAL_CHANGE[colour]:
+                current_value = answer            
+            if not top_level:
+                if current_value * MATERIAL_CHANGE[colour] >= last_better * MATERIAL_CHANGE[colour]:
+                    return current_value    
+    if not top_level:
+        if colour == WHITE:
+            return max(list_values)
+        return min(list_values)
     else:
-        return True
+        print(list_values)
+        if colour == WHITE:
+            val = max(list_values)
+        else:
+            val = min(list_values)
+        move_index = list_values.index(val)    
+        move = list_moves[move_index]    
+        if val % 1 != 0:
+            return int((val - val // 1) * 10), move[1], None, move[3]
+        return move    
        
             
             

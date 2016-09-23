@@ -1,8 +1,9 @@
-from stuff import read_position, course_record, print_data, transformation_record
+from stuff import read_position, course_record, print_data, transformation_record, material_count
 from move import make_move
 from constants import *
 from fen import fen_format
 import time
+
 
 
 def main():
@@ -13,8 +14,9 @@ def main():
         data, colour, castling_list, passant = fen_format(input_str)    
         position = read_position(data)
         time1 = time.time()
-        length = int(input())
-        x, y, x1, y1 = make_move(position, colour, colour, length, length, False, [], castling_list, passant)
+        length = 5
+        material = material_count(position)
+        x, y, x1, y1 = make_move(position, colour, colour, length, length, False, [], material, MATERIAL_CHANGE[1 - colour] * KING_VALUE, castling_list, passant)
         pawn_queen = False     
         if x1 is None:
             pawn_queen = True

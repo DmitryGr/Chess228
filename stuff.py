@@ -9,6 +9,12 @@ def change_pos(position, x, y, x1, y1, first_figure, second_figure):
     position.change_position(x, y, first_figure)
     position.change_position(x1, y1, second_figure) 
     
+def material_count(position):
+    material = 0
+    for i in range(5):
+        material += len(position.white[i]) * VALUES[i] - len(position.black[i]) * VALUES[i]
+    return material    
+    
 def course_record(x, y, x1, y1, figure, eat):
     answer = ""
     line_figures = ["", "N", "B", "R", "Q", "K"]
